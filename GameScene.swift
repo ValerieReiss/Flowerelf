@@ -30,8 +30,6 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     var gameOver = false
     var won = false
      
-    // Enum to handle collision. Elf vs Object = 1 + 2 =3 for example
-     
     enum ColliderType: UInt32
     {
         case Elf = 1
@@ -44,11 +42,11 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     func setUpgame()
     {
         var ArrayName : [String] = []
-        //var randomIndexBackground: Int = 0
-        //let backgroundArray = ["background1"]
-        //randomIndexBackground = Int(arc4random_uniform(4))
-        let bgTexture = SKTexture(imageNamed: "background1")
-        let moveBGAnimation = SKAction.move(by: CGVector(dx: -bgTexture.size().width, dy: 0), duration: 7)
+        var randomIndexBackground: Int = 0
+        let backgroundArray = ["background1", "background2", "background3", "background4"]
+        randomIndexBackground = Int(arc4random_uniform(4))
+        let bgTexture = SKTexture(imageNamed: backgroundArray[randomIndexBackground])
+        let moveBGAnimation = SKAction.move(by: CGVector(dx: -bgTexture.size().width, dy: 0), duration: 14)
         let shiftBGAnimation = SKAction.move(by: CGVector(dx: bgTexture.size().width, dy: 0),duration: 0)
         let moveBGForever = SKAction.repeatForever(SKAction.sequence([moveBGAnimation, shiftBGAnimation]))
         var i: CGFloat = 0
@@ -85,36 +83,36 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         elf.physicsBody!.isDynamic = false
         elf.physicsBody?.affectedByGravity = true
         elf.run(makeElfFlap)
-        elf.setScale(0.5)
+        elf.setScale(0.7)
         elf.physicsBody!.contactTestBitMask = ColliderType.Object.rawValue
         elf.physicsBody!.categoryBitMask = ColliderType.Elf.rawValue
         elf.physicsBody!.collisionBitMask = ColliderType.Elf.rawValue
         self.addChild(elf)
         
         var playerHearts = 20
-        let hearts = SKSpriteNode(imageNamed: "objectHeart.jpg")
+        let hearts = SKSpriteNode(imageNamed: "objectHeart")
         hearts.name = "heart"
-        hearts.position = CGPoint(x: self.frame.midX - 450, y: self.frame.maxY - 200)
+        hearts.position = CGPoint(x: self.frame.midX - 450, y: self.frame.minY + 350)
         hearts.setScale(2)
         hearts.zPosition = 5
         addChild(hearts)
         scoreHearts = SKLabelNode(fontNamed: "Bradley Hand")
         scoreHearts.fontSize = 120
         scoreHearts.text = "\(playerHearts)"
-        scoreHearts.position = CGPoint(x: self.frame.midX - 320, y: self.frame.maxY - 200)
+        scoreHearts.position = CGPoint(x: self.frame.midX - 300, y: self.frame.minY + 350)
         addChild(scoreHearts)
         
         var score = 0
-        let flower = SKSpriteNode(imageNamed: "objectHeart.jpg")
+        let flower = SKSpriteNode(imageNamed: "objectFlower1")
         flower.name = "flower"
-        flower.position = CGPoint(x: self.frame.midX - 450, y: self.frame.maxY - 300)
-        flower.setScale(2)
+        flower.position = CGPoint(x: self.frame.midX - 450, y: self.frame.minY + 500)
+        flower.setScale(0.3)
         flower.zPosition = 5
         addChild(flower)
         scoreLabel = SKLabelNode(fontNamed: "Bradley Hand")
         scoreLabel.fontSize = 120
         scoreLabel.text = "\(score)"
-        scoreLabel.position = CGPoint(x: self.frame.midX - 320, y: self.frame.maxY - 300)
+        scoreLabel.position = CGPoint(x: self.frame.midX - 300, y: self.frame.minY + 500)
         addChild(scoreLabel)
         
         timer2 = Timer.scheduledTimer(timeInterval: 1.5, target: self, selector: #selector(self.makeEnemy), userInfo: nil, repeats: true)
@@ -136,9 +134,12 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         {
             if (contactMask == 5)
                 {
-                playerHearts -= 1
-                Enemy.removeFromParent()
-                if playerHearts == 0 { gameover() }
+                if contact.bodyA.node?.name == "Enemy" {
+                    contact.bodyA.node?.removeFromParent()
+                    playerHearts -= 1
+                    //self.Enemy.removeFromParent()
+                    print("enemy + elf")
+                    if playerHearts == 0 { gameover() }}
                 }
             else if (contactMask == 3)
                 {
@@ -150,13 +151,18 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
                 contact.bodyA.node?.removeFromParent()
                 contact.bodyB.node?.removeFromParent()
                 score += 1
-                print("hit enemy")
+                print("water + enemy")
                 }
       
             else if (contactMask == 24)
             {
                 score += 1
                 print("blume gegossen")
+                if let sparkleStars = SKEmitterNode(fileNamed: "particleStars"){
+                               sparkleStars.particleTexture = SKTexture(imageNamed: "particleHeart")
+                               sparkleStars.position = elf.position
+                               sparkleStars.zPosition = 10
+                               addChild(sparkleStars)}
                 if score == 20 {
                     won = true
                     gameover() }
@@ -173,7 +179,6 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         self.physicsWorld.contactDelegate = self
         self.setUpgame()
     }
-    
     
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         run(sound)
@@ -200,6 +205,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     
     func gameover(){
         if won == true {
+            run("sound-heal")
             if let bubbles = SKEmitterNode(fileNamed: "particle-won"){
                         bubbles.particleTexture = SKTexture(imageNamed: "particleHeart")
                 bubbles.position = CGPoint(x: 0.0, y: 0.0)
@@ -211,16 +217,18 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         gameOver = true
         timer2.invalidate()
         gameOverLabel.fontName = "Chalkduster"
-        let GameOverBackground = SKSpriteNode(imageNamed: "gameOverBack.png")
-        GameOverBackground.size = CGSize(width: 1290, height: 645)
+        
+        let GameOverBackground = SKSpriteNode(imageNamed: "backgroundNewGame")
+        GameOverBackground.size = CGSize(width: 1290, height: 2796)
         GameOverBackground.position = CGPoint(x: self.frame.midX, y: self.frame.midY)
-        GameOverBackground.zPosition = 1
-        self.addChild(GameOverBackground)
+        GameOverBackground.zPosition = 3
+        addChild(GameOverBackground)
+    
         playerHearts = 20
         gameOverLabel.fontSize = 100
         gameOverLabel.text = "PLAY AGAIN"
-        gameOverLabel.position = CGPoint(x : self.frame.midX, y: self.frame.midY + 400)
-        gameOverLabel.zPosition = 2
+        gameOverLabel.position = CGPoint(x : self.frame.midX, y: self.frame.midY - 800)
+        gameOverLabel.zPosition = 4
         self.addChild(gameOverLabel)
     }
     
@@ -252,21 +260,21 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
          Flower.physicsBody!.collisionBitMask = ColliderType.Flower.rawValue
          Flower.setScale(0.5)
          self.addChild(Flower)
-
      }
     
     @objc func makeWater() {
         let waterTexture = SKTexture(imageNamed: "objectWaterdrop")
         water = SKSpriteNode(texture: waterTexture)
-        water.position = CGPoint(x: elf.position.x, y: elf.position.y)
-        let moveWaterForward = SKAction.move(by: CGVector(dx: 100, dy: 0), duration: 1)
+        water.position = CGPoint(x: elf.position.x + 200, y: elf.position.y - 100)
+        let moveWaterForward = SKAction.move(by: CGVector(dx: 400, dy: 0), duration: 1)
         water.run(moveWaterForward)
         water.physicsBody = SKPhysicsBody(rectangleOf: waterTexture.size())
         water.physicsBody!.isDynamic = true
         water.physicsBody?.affectedByGravity = true
-        water.physicsBody!.contactTestBitMask = ColliderType.Object.rawValue
+        water.physicsBody!.contactTestBitMask = ColliderType.Flower.rawValue
         water.physicsBody!.categoryBitMask = ColliderType.Water.rawValue
         water.physicsBody!.collisionBitMask = ColliderType.Water.rawValue
+        water.setScale(0.2)
         self.addChild(water)
         
     }
@@ -277,11 +285,12 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         let EnemyY = arc4random() % UInt32(self.frame.height/2)
         let EnemyTexture = SKTexture(imageNamed: "objectButterfly1.png")
         //Make flapping butterfly
-        /*let objectButterfly2  = SKTexture(imageNamed: "objectButterfly2.png")
+        let objectButterfly2  = SKTexture(imageNamed: "objectButterfly2.png")
         let objectButterfly3 = SKTexture(imageNamed: "objectButterfly3.png")
-        let animation = SKAction.animate(with: [EnemyTexture, objectButterfly2, objectButterfly3], timePerFrame: 0.08)*/
+        let objectButterfly0 = SKTexture(imageNamed: "objectButterfly0.png")
+        let animation = SKAction.animate(with: [EnemyTexture, objectButterfly2, objectButterfly3], timePerFrame: 0.08)
         let moveButterfly = SKAction.move(to: CGPoint(x: -1000, y: 200), duration: 6)
-        //let makeBUtterflyFlap = SKAction.repeatForever(animation)
+        let makeButterflyFlap = SKAction.repeatForever(animation)
         
         Enemy = SKSpriteNode(texture: EnemyTexture)
         if EnemyY < UInt32(self.frame.height/4)
@@ -291,14 +300,20 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         
         Enemy.position = CGPoint(x: self.frame.width, y: EnemyActualY)
         Enemy.run(moveButterfly)
-        //Enemy.run(makeButterflyFlap)
+        Enemy.run(makeButterflyFlap)
+        Enemy.name = "Enemy"
         Enemy.physicsBody = SKPhysicsBody(rectangleOf: EnemyTexture.size())
         Enemy.physicsBody!.isDynamic = true
         Enemy.physicsBody!.contactTestBitMask = ColliderType.Elf.rawValue
         Enemy.physicsBody!.categoryBitMask = ColliderType.Enemy.rawValue
         Enemy.physicsBody!.collisionBitMask = ColliderType.Enemy.rawValue
-        Enemy.setScale(0.5)
+        Enemy.setScale(0.8)
         self.addChild(Enemy)
 
     }
+    
+    func run(_ fileName: String){
+            run(SKAction.repeat((SKAction.playSoundFileNamed(fileName, waitForCompletion: true)), count: 1))
+        }
+    
 }
