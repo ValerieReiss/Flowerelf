@@ -11,6 +11,8 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     
     let sound = SKAction.playSoundFileNamed("sfx_swooshing.wav", waitForCompletion: false)
     var elf  = SKSpriteNode()
+    var Waterelf = SKSpriteNode()
+    var Butterflyelf = SKSpriteNode()
     var bg = SKSpriteNode()
     var water = SKSpriteNode()
     var Enemy = SKSpriteNode()
@@ -21,14 +23,17 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     
     var scoreHearts = SKLabelNode()
     var hearts = SKSpriteNode()
-    var playerHearts = 20
+    var playerHearts = 0
     
     var gameOverLabel = SKLabelNode()
     
     var timer1 = Timer()
     var timer2 = Timer()
+    
     var gameOver = false
     var won = false
+    var indexElf = Int()
+    var elfTimer = Timer()
      
     enum ColliderType: UInt32
     {
@@ -37,11 +42,14 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         case Enemy = 4
         case Water = 8
         case Flower = 16
+        case Waterelf = 32
+        case Butterflyelf = 64
     }
     
     func setUpgame()
     {
         var ArrayName : [String] = []
+        
         var randomIndexBackground: Int = 0
         let backgroundArray = ["background1", "background2", "background3", "background4"]
         randomIndexBackground = Int(arc4random_uniform(4))
@@ -61,16 +69,10 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
             i += 1
         }
         var randomIndexElf: Int = 0
-        //randomIndexElf = Int(arc4random_uniform(2))
         if randomIndexElf == 0
         {
             ArrayName = ["elf1", "elf2", "elf3", "elf4"]
         }
-        /*else
-        {
-            ArrayName = ["D2FLY_000.png", "D2FLY_001.png", "D2FLY_004.png", "D2ATTACK_005.png"]
-            
-        }*/
         let elfTexture = SKTexture(imageNamed: ArrayName[0])
         let elfTexture2 = SKTexture(imageNamed: ArrayName[1])
         let elfTexture3 = SKTexture(imageNamed: ArrayName[2])
@@ -78,7 +80,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         let animation = SKAction.animate(with: [elfTexture, elfTexture2, elfTexture3, elfTexture4], timePerFrame: 0.08)
         let makeElfFlap = SKAction.repeatForever(animation)
         elf = SKSpriteNode(texture: elfTexture)
-        elf.position = CGPoint(x: -400, y: self.frame.midY)
+        elf.position = CGPoint(x: -350, y: self.frame.midY)
         elf.physicsBody = SKPhysicsBody(circleOfRadius: elfTexture.size().height/2)
         elf.physicsBody!.isDynamic = false
         elf.physicsBody?.affectedByGravity = true
@@ -89,11 +91,11 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         elf.physicsBody!.collisionBitMask = ColliderType.Elf.rawValue
         self.addChild(elf)
         
-        var playerHearts = 20
-        let hearts = SKSpriteNode(imageNamed: "objectHeart")
-        hearts.name = "heart"
+        var playerHearts = 0
+        let hearts = SKSpriteNode(imageNamed: "objectButterfly1")
+        hearts.name = "butterfly"
         hearts.position = CGPoint(x: self.frame.midX - 450, y: self.frame.minY + 350)
-        hearts.setScale(2)
+        hearts.setScale(0.5)
         hearts.zPosition = 5
         addChild(hearts)
         scoreHearts = SKLabelNode(fontNamed: "Bradley Hand")
@@ -106,7 +108,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         let flower = SKSpriteNode(imageNamed: "objectFlower1")
         flower.name = "flower"
         flower.position = CGPoint(x: self.frame.midX - 450, y: self.frame.minY + 500)
-        flower.setScale(0.3)
+        flower.setScale(0.4)
         flower.zPosition = 5
         addChild(flower)
         scoreLabel = SKLabelNode(fontNamed: "Bradley Hand")
@@ -115,8 +117,25 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         scoreLabel.position = CGPoint(x: self.frame.midX - 300, y: self.frame.minY + 500)
         addChild(scoreLabel)
         
-        timer2 = Timer.scheduledTimer(timeInterval: 1.5, target: self, selector: #selector(self.makeEnemy), userInfo: nil, repeats: true)
         timer1 = Timer.scheduledTimer(timeInterval: 5, target: self, selector: #selector(self.makeFlower), userInfo: nil, repeats: true)
+        timer2 = Timer.scheduledTimer(timeInterval: 2.0, target: self, selector: #selector(self.makeEnemy), userInfo: nil, repeats: true)
+        
+        
+        var indexElf = 0
+        elfTimer = Timer.scheduledTimer(withTimeInterval: 15.0, repeats: true) { [self] timer3 in
+            //var indexElf = Int.random(in: 1..<3)
+            if indexElf == 0 {
+                self.makeWaterelf()
+                indexElf += 1
+            }
+            else if indexElf == 1 {
+                self.makeButterflyelf()
+                indexElf += 1
+            }
+            else { print("kein elf")
+                indexElf = 0 }
+        }
+        
         
         let ground = SKNode()
         ground.position = CGPoint(x: self.frame.midX, y: -self.frame.height/2)
@@ -135,15 +154,19 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
             if (contactMask == 5)
                 {
                 if contact.bodyA.node?.name == "Enemy" {
+                    if let sparkleStars = SKEmitterNode(fileNamed: "particle-stars"){
+                                   sparkleStars.particleTexture = SKTexture(imageNamed: "particleHeart")
+                                   sparkleStars.position = elf.position
+                                   sparkleStars.zPosition = 10
+                                   addChild(sparkleStars)}
                     contact.bodyA.node?.removeFromParent()
-                    playerHearts -= 1
-                    //self.Enemy.removeFromParent()
-                    print("enemy + elf")
-                    if playerHearts == 0 { gameover() }}
+                    playerHearts += 1
+                    if playerHearts == 20 {
+                        won = true
+                        gameover() }}
                 }
             else if (contactMask == 3)
                 {
-                print("touched ground")
                 gameover()
                 }
             else if (contactMask == 12)
@@ -151,21 +174,41 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
                 contact.bodyA.node?.removeFromParent()
                 contact.bodyB.node?.removeFromParent()
                 score += 1
-                print("water + enemy")
+                //print("water + enemy")
                 }
       
             else if (contactMask == 24)
             {
                 score += 1
-                print("blume gegossen")
-                if let sparkleStars = SKEmitterNode(fileNamed: "particleStars"){
-                               sparkleStars.particleTexture = SKTexture(imageNamed: "particleHeart")
-                               sparkleStars.position = elf.position
+                //print("blume gegossen")
+                if let sparkleStars = SKEmitterNode(fileNamed: "particle-stars"){
+                               sparkleStars.particleTexture = SKTexture(imageNamed: "objectWaterdrop")
+                               sparkleStars.position = Flower.position
                                sparkleStars.zPosition = 10
                                addChild(sparkleStars)}
                 if score == 20 {
                     won = true
                     gameover() }
+            }
+            else if (contactMask == 33)
+            {
+                print("Elf getroffen")
+                if let sparkleStars = SKEmitterNode(fileNamed: "particle-stars"){
+                               sparkleStars.particleTexture = SKTexture(imageNamed: "particleHeart")
+                               sparkleStars.position = Waterelf.position
+                               sparkleStars.zPosition = 10
+                               addChild(sparkleStars)}
+                //movement Waterelf
+            }
+            else if (contactMask == 65)
+            {
+                print("Elf getroffen")
+                if let sparkleStars = SKEmitterNode(fileNamed: "particle-stars"){
+                               sparkleStars.particleTexture = SKTexture(imageNamed: "particleHeart")
+                               sparkleStars.position = Waterelf.position
+                               sparkleStars.zPosition = 10
+                               addChild(sparkleStars)}
+                //movement Butterflyelf
             }
             
             else
@@ -182,19 +225,24 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         run(sound)
-        if (gameOver == false) {
-            elf.physicsBody!.isDynamic = true
-            elf.physicsBody!.velocity = CGVector(dx: 0, dy: 0)
-            elf.physicsBody!.applyImpulse(CGVector(dx: 0, dy: 3000))
-            makeWater()
+            if (gameOver == false) {
+                elf.physicsBody!.isDynamic = true
+                elf.physicsBody!.velocity = CGVector(dx: 0, dy: 0)
+                elf.physicsBody!.applyImpulse(CGVector(dx: 0, dy: 5000))
+                if elf.position.y > frame.height/2 - 200 {
+                    print("elf drüber")
+                    elf.position.y = frame.height/2 - 200 }
+                makeWater()
             }
-        else
+            else
             {
-            gameOver = false
-            score = 0
-            self.speed = 1
-            self.removeAllChildren()
-            setUpgame()
+                gameOver = false
+                playerHearts = 0
+                score = 0
+                self.speed = 1
+                self.removeAllChildren()
+                removeAllChildren()
+                setUpgame()
             }
     }
    
@@ -216,50 +264,48 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         self.speed = 0
         gameOver = true
         timer2.invalidate()
+        timer1.invalidate()
+        elfTimer.invalidate()
+        
         gameOverLabel.fontName = "Chalkduster"
         
         let GameOverBackground = SKSpriteNode(imageNamed: "backgroundNewGame")
         GameOverBackground.size = CGSize(width: 1290, height: 2796)
         GameOverBackground.position = CGPoint(x: self.frame.midX, y: self.frame.midY)
-        GameOverBackground.zPosition = 3
+        GameOverBackground.zPosition = 10
         addChild(GameOverBackground)
     
-        playerHearts = 20
+        
         gameOverLabel.fontSize = 100
         gameOverLabel.text = "PLAY AGAIN"
-        gameOverLabel.position = CGPoint(x : self.frame.midX, y: self.frame.midY - 800)
+        gameOverLabel.position = CGPoint(x : self.frame.midX + 200, y: self.frame.midY - 1000)
         gameOverLabel.zPosition = 4
         self.addChild(gameOverLabel)
     }
     
     @objc func makeFlower()
      {
-         let FlowerActualY = arc4random() % UInt32(self.frame.height/2)
-         //let FlowerY = arc4random() % UInt32(self.frame.height/2)
-         let FlowerTexture = SKTexture(imageNamed: "objectFlower1.png")
-         //Make flapping butterfly
-         /*let objectButterfly2  = SKTexture(imageNamed: "objectButterfly2.png")
-         let objectButterfly3 = SKTexture(imageNamed: "objectButterfly3.png")
-         let animation = SKAction.animate(with: [EnemyTexture, objectButterfly2, objectButterfly3], timePerFrame: 0.08)*/
-         let moveFlower = SKAction.move(to: CGPoint(x: -1000, y: 200), duration: 6)
-         //let makeBUtterflyFlap = SKAction.repeatForever(animation)
+         let flowerArray = ["objectFlower1", "objectFlower2", "objectFlower3", "objectFlower4"]
+         let randomIndex = Int(arc4random_uniform(4))
+         let FlowerTexture = SKTexture(imageNamed: flowerArray[randomIndex])
          
+         let FlowerY = (-1) * Int.random(in: 100..<800)
+         //let FlowerTexture = SKTexture(imageNamed: "objectFlower1.png")
          Flower = SKSpriteNode(texture: FlowerTexture)
-        /* if FlowerY < UInt32(self.frame.height/4)
-         { FlowerActualY = -2 * CGFloat(FlowerY) }
-         else
-         { FlowerActualY = CGFloat(FlowerY) }*/
+         Flower.position = CGPoint(x: self.frame.width - 100, y: CGFloat(FlowerY))
          
-         Flower.position = CGPoint(x: self.frame.width, y: CGFloat(FlowerActualY))
-         Flower.run(moveFlower)
-         //Enemy.run(makeButterflyFlap)
          Flower.physicsBody = SKPhysicsBody(rectangleOf: FlowerTexture.size())
          Flower.physicsBody!.isDynamic = true
          Flower.physicsBody!.contactTestBitMask = ColliderType.Water.rawValue
          Flower.physicsBody!.categoryBitMask = ColliderType.Flower.rawValue
          Flower.physicsBody!.collisionBitMask = ColliderType.Flower.rawValue
-         Flower.setScale(0.5)
-         self.addChild(Flower)
+         Flower.setScale(0.9)
+         Flower.zPosition = 5
+         addChild(Flower)
+        
+         let moveFlower = SKAction.move(to: CGPoint(x: -1000, y: Int(FlowerY)), duration: 6)
+         Flower.run(moveFlower)
+         
      }
     
     @objc func makeWater() {
@@ -288,7 +334,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         let objectButterfly2  = SKTexture(imageNamed: "objectButterfly2.png")
         let objectButterfly3 = SKTexture(imageNamed: "objectButterfly3.png")
         let objectButterfly0 = SKTexture(imageNamed: "objectButterfly0.png")
-        let animation = SKAction.animate(with: [EnemyTexture, objectButterfly2, objectButterfly3], timePerFrame: 0.08)
+        let animation = SKAction.animate(with: [EnemyTexture, objectButterfly2, objectButterfly3, objectButterfly0], timePerFrame: 0.08)
         let moveButterfly = SKAction.move(to: CGPoint(x: -1000, y: 200), duration: 6)
         let makeButterflyFlap = SKAction.repeatForever(animation)
         
@@ -309,7 +355,60 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         Enemy.physicsBody!.collisionBitMask = ColliderType.Enemy.rawValue
         Enemy.setScale(0.8)
         self.addChild(Enemy)
-
+    }
+    
+    @objc func makeWaterelf()
+     {
+         let elfArray = ["waterelf1", "waterelf2", "waterelf3"]
+         let elfTexture1 = SKTexture(imageNamed: elfArray[0])
+         let elfTexture2 = SKTexture(imageNamed: elfArray[1])
+         let elfTexture3 = SKTexture(imageNamed: elfArray[2])
+         let animation = SKAction.animate(with: [elfTexture1, elfTexture2, elfTexture3], timePerFrame: 0.08)
+         let makeElfFlap = SKAction.repeatForever(animation)
+         
+         Waterelf = SKSpriteNode(texture: elfTexture1)
+         let ElfY = Int.random(in: 0..<1000)
+         Waterelf.position = CGPoint(x: self.frame.width - 100, y: CGFloat(ElfY))
+         
+         Waterelf.physicsBody = SKPhysicsBody(rectangleOf: elfTexture1.size())
+         Waterelf.physicsBody!.isDynamic = true
+         Waterelf.physicsBody!.contactTestBitMask = ColliderType.Elf.rawValue
+         Waterelf.physicsBody!.categoryBitMask = ColliderType.Waterelf.rawValue
+         Waterelf.physicsBody!.collisionBitMask = ColliderType.Waterelf.rawValue
+         Waterelf.setScale(0.7)
+         Waterelf.zPosition = 5
+         self.addChild(Waterelf)
+         Waterelf.run(makeElfFlap)
+         let moveFlower = SKAction.move(to: CGPoint(x: -1000, y: Int(ElfY)), duration: 6)
+         let seq = SKAction.sequence([moveFlower, .removeFromParent()])
+         Waterelf.run(seq)
+     }
+    
+    @objc func makeButterflyelf()
+    {
+        let elfArray = ["butterflyelf1", "butterflyelf2", "butterflyelf3"]
+        let elfTexture1 = SKTexture(imageNamed: elfArray[0])
+        let elfTexture2 = SKTexture(imageNamed: elfArray[1])
+        let elfTexture3 = SKTexture(imageNamed: elfArray[2])
+        let animation = SKAction.animate(with: [elfTexture1, elfTexture2, elfTexture3], timePerFrame: 0.08)
+        let makeElfFlap = SKAction.repeatForever(animation)
+        
+        Butterflyelf = SKSpriteNode(texture: elfTexture1)
+        let ElfY = Int.random(in: 0..<800)
+        Butterflyelf.position = CGPoint(x: self.frame.width - 100, y: CGFloat(ElfY))
+        
+        Butterflyelf.physicsBody = SKPhysicsBody(rectangleOf: elfTexture1.size())
+        Butterflyelf.physicsBody!.isDynamic = true
+        Butterflyelf.physicsBody!.contactTestBitMask = ColliderType.Elf.rawValue
+        Butterflyelf.physicsBody!.categoryBitMask = ColliderType.Butterflyelf.rawValue
+        Butterflyelf.physicsBody!.collisionBitMask = ColliderType.Butterflyelf.rawValue
+        Butterflyelf.setScale(0.7)
+        Butterflyelf.zPosition = 5
+        self.addChild(Butterflyelf)
+        Butterflyelf.run(makeElfFlap)
+        let moveFlower = SKAction.move(to: CGPoint(x: -1000, y: Int(ElfY)), duration: 6)
+        let seq = SKAction.sequence([moveFlower, .removeFromParent()])
+        Butterflyelf.run(seq)
     }
     
     func run(_ fileName: String){
